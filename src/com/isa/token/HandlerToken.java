@@ -5,12 +5,16 @@ package com.isa.token;
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
+import com.isa.entities.ParamInfo;
 import com.isa.exception.AppletException;
 import com.isa.plataform.OSValidator;
 import com.isa.utiles.Utiles;
-import com.isa.utiles.UtilesResources;
+import java.security.KeyStoreException;
+import java.security.ProviderException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.security.auth.login.LoginException;
 
 /**
@@ -19,38 +23,49 @@ import javax.security.auth.login.LoginException;
  */
 public class HandlerToken {
     
+    private static HandlerToken instance;
+    
     private ArrayList<Token> tokens;
-
-    public HandlerToken( Token token){
-        tokens = new ArrayList();
-        tokens.add(token);
+    private String[] modulos;
+    private String[] libs;
+    
+    public static HandlerToken getInstance(){
+        if (instance == null){
+            instance = new HandlerToken();
+        }
+        return instance;
     }
+    
     /**
      * Carga todos los tokens configurados en la pc del usuario. 
-     * 
-     * @throws com.isa.exception.AppletException
      */
-    public HandlerToken() throws AppletException   {
+    private HandlerToken(){
+        System.out.println("HandlerToken::Constructor");
         tokens = new ArrayList();
 
         String libraries = "";
         if (OSValidator.isWindows()) {
-            libraries = UtilesResources.getProperty("appletConfig.LibrariesWin");
+            libraries = ParamInfo.getInstance().getParam_lib_win();
         }        
         if (OSValidator.isUnix()){
-            libraries = UtilesResources.getProperty("appletConfig.LibrariesUni");
+            libraries = ParamInfo.getInstance().getParam_lib_unx();
         }
+        String modulosstr = ParamInfo.getInstance().getParam_modulos();
 
-        String modulos = UtilesResources.getProperty("appletConfig.Modulos");
-
-        String[] modulosStr = Utiles.splitByCaracter(modulos, ",");
-        String[] librStr = Utiles.splitByCaracter(libraries, ",");
-
-        for (int i = 0; i < modulosStr.length; i++){
-            Token token = new Token(modulosStr[i], librStr[i]);
-            tokens.add(token);
-        }
+        modulos = Utiles.splitByCaracter(modulosstr, ",");
+        libs = Utiles.splitByCaracter(libraries, ",");
     } 
+    
+    public void cargarTokens(){
+        System.out.println("HandlerToken::cargarTokens");
+        
+        tokens.clear();
+        for (int i = 0; i < modulos.length; i++){
+            Token token = new Token(modulos[i], libs[i]);
+            tokens.add(token);
+        }   
+    }
+    
 
     public ArrayList<Token> getTokens() {
         if (tokens == null){
@@ -70,18 +85,24 @@ public class HandlerToken {
      * @return 
      */
     public Token getTokenActivo(){
-        
-        Iterator<Token> it = getTokens().iterator();
-        Token token = null;
-        
-        while (it.hasNext()){
-            Token t = it.next();
-            if (t.isActivo()){
-                token = t;
-                break;
+        try {
+            Iterator<Token> it = getTokens().iterator();
+            Token token = null;
+
+            while (it.hasNext()){
+                Token t = it.next();
+                t.reLoadConfig();
+                if (t.isActivo()){
+                    token = t;
+                    break;
+                }
             }
-        }
-        return token;
+            return token;
+        } catch (ProviderException ex) {
+            Logger.getLogger(HandlerToken.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
+            return null;
+        }            
     }
     
     /**
@@ -90,19 +111,27 @@ public class HandlerToken {
      * @return 
      */
     public boolean isTokenActivo(){
-        boolean isActivo = false;
-        System.out.println("HandlerToken::isTokenActivo");
-        
-        Iterator<Token> it = getTokens().iterator();
-        
-        while (it.hasNext()){
-            Token t = it.next();
-            if (t.isActivo()){
-                isActivo = true;
-                break;
+        try {
+            boolean isActivo = false;
+            System.out.println("HandlerToken::isTokenActivo");
+
+            Iterator<Token> it = getTokens().iterator();
+
+            while (it.hasNext()){
+                Token t = it.next();
+                t.reLoadConfig();
+                if (t.isActivo()){
+                    isActivo = true;
+                    break;
+                }
             }
-        }
-        return isActivo;
+            return isActivo;
+        } 
+        catch (ProviderException ex) {
+            Logger.getLogger(HandlerToken.class.getName()).log(Level.SEVERE, null, ex);
+            ex.printStackTrace();
+            return false;
+        }       
     }
     
     public void desactivarAllTokens() throws LoginException{
@@ -115,6 +144,22 @@ public class HandlerToken {
                 t.logout();
             }
         }
+    }
+
+    public String[] getModulos() {
+        return modulos;
+    }
+
+    public void setModulos(String[] modulos) {
+        this.modulos = modulos;
+    }
+
+    public String[] getLibs() {
+        return libs;
+    }
+
+    public void setLibs(String[] libs) {
+        this.libs = libs;
     }
     
     

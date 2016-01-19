@@ -10,6 +10,7 @@ import com.isa.exception.AppletException;
 import com.itextpdf.text.pdf.PdfSignatureAppearance;
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -20,6 +21,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringWriter;
 import java.net.URL;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -80,6 +84,47 @@ public class Utiles {
         }
         return "";
     }
+
+    
+    
+    /**
+     * Función para obtener el nombre identificado por O= 
+     * @return String
+     * @param nombre
+     */
+    public static String getO(String nombre){
+        String[] arreglo;
+        arreglo = nombre.split(",");
+        for ( int i = 0; i < arreglo.length; i++ ){
+            if(arreglo[i].startsWith(" O=")||arreglo[i].startsWith("O=")){
+                if(arreglo[i].startsWith(" O="))
+                    return arreglo[i].replace(" O=", "");
+                else
+                    return arreglo[i].replace("O=", "");
+            }
+        }
+        return "";
+    }    
+    
+    
+    /**
+     * Función para obtener el nombre identificado por OU= 
+     * @return String
+     * @param nombre
+     */
+    public static String getOU(String nombre){
+        String[] arreglo;
+        arreglo = nombre.split(",");
+        for ( int i = 0; i < arreglo.length; i++ ){
+            if(arreglo[i].startsWith(" OU=")||arreglo[i].startsWith("OU=")){
+                if(arreglo[i].startsWith(" OU="))
+                    return arreglo[i].replace(" OU=", "");
+                else
+                    return arreglo[i].replace("OU=", "");
+            }
+        }
+        return "";
+    }     
     
     
     public static String getCI( String nombre ){
@@ -282,12 +327,12 @@ public class Utiles {
             output.close();
 	}
     }
+   
     
-//    public static String convertToSHA256( String str ) throws NoSuchAlgorithmException{
-//        MessageDigest sha = MessageDigest.getInstance("SHA1");
-//        sha.digest(str.getBytes());
-//        return Base64.encode(sha.digest(str.getBytes()));
-//    }  
+    public static byte[] convertirBase64StringToArrayBytes( String imgBase64 ){
+        return Base64.decodeBase64(imgBase64);
+    } 
+    
     
     public static String convertBase64ToString (byte[] data){
         String p="";
@@ -296,6 +341,21 @@ public class Utiles {
         } 
         return p;
     }
+    
+
+    /**
+     * Converts a byte array to a X509Certificate instance.
+     * @param bytes the byte array
+     * @return a X509Certificate instance
+     * @throws CertificateException if the conversion fails
+     */
+    public static X509Certificate fromByteArrayToX509Certificate(byte[] bytes) throws CertificateException {
+        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+        InputStream in = new ByteArrayInputStream(bytes);
+        X509Certificate cert = (X509Certificate) certFactory.generateCertificate(in);
+        return cert;
+    }    
+    
     
     public static String convertArrayByteToString(byte[] data){
         if (data != null){
@@ -308,21 +368,6 @@ public class Utiles {
     public static double convertTimeMillisToSeconds(long millisSecond){
         return millisSecond / 1000.0;
     }
-    
-    /*
-     Convierte un Certificado en base64 y
-    retorna un String
-    */
-//    public static String convertX509ToBase64(X509Certificate cert) throws CertificateEncodingException {
-        
-//        byte[] pk = Base64.encode(cert.getEncoded());
-//        String certString ="";
-//        for (int i=0;i < pk.length;i++){
-//            certString=certString+(char)pk[i];
-//        }  
-//        return certString;
-//        return Base64.encode(cert.getEncoded());
-//    }
     
     
     public static File crearArchivosFromBytes(byte[] documento, String fileName) {
@@ -411,4 +456,28 @@ public class Utiles {
         
         return m;
     }
+    
+    
+    public static float convertirMmToPDFUnits( int value ){
+        
+        double pulgadas = 0d;
+        double pdfunits = 0d;
+        double centimetros = 0d;
+        
+        centimetros = convertirMMtoCM(value);
+        pulgadas = convertirCmToPulgadas(centimetros); 
+        
+        pdfunits =  pulgadas * 72;
+        
+        return (float) pdfunits ;
+    }
+    
+    public static double convertirMMtoCM ( int value ){
+        return (value / 10);
+    }
+    
+    public static double convertirCmToPulgadas( double cm ){
+        return cm * 0.39370;
+    }
+    
 }

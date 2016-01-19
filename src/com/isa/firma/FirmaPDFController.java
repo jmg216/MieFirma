@@ -6,15 +6,17 @@
 package com.isa.firma;
 
 import com.isa.common.ActualCertInfo;
+import com.isa.common.HandlerCert;
+import com.isa.entities.Certificado;
+import com.isa.entities.SignerInfo;
 import com.isa.exception.AppletException;
+import com.isa.plataform.KeyStoreValidator;
+import com.isa.token.HandlerToken;
+import com.isa.token.Token;
 import com.isa.utiles.IdGenerator;
 import com.isa.utiles.Utiles;
 import com.isa.utiles.UtilesMsg;
-import com.isa.utiles.UtilesResources;
-import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Font.FontFamily;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.PdfReader;
@@ -29,15 +31,11 @@ import com.itextpdf.text.pdf.security.PrivateKeySignature;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.security.GeneralSecurityException;
-import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.UnrecoverableKeyException;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -56,100 +54,56 @@ public class FirmaPDFController {
             firmaPDFController = new FirmaPDFController();
         }
         return firmaPDFController;
-    } 
+    }
     
     
-    public PDFFirma generarFirmaApariencia( KeyStore keystore, String alias ) throws AppletException{
-        
-        try {
-            System.out.println("Firma Controller::generarApariencia");
-            
-            
-            HashMap aliasHash = ActualCertInfo.getInstance().getAliasHash();
-            int certIndex = ActualCertInfo.getInstance().getCertIndex();
-            
-            PDFFirma infofirma = new PDFFirma();
-            infofirma.setPk( (PrivateKey) keystore.getKey(alias, null) );
-            infofirma.setChainCert( keystore.getCertificateChain(alias) );
-            infofirma.setProvidername( keystore.getProvider().getName() );
-            //Definiendo apariencia de firma.
-            infofirma.setFirmante(ActualCertInfo.getInstance().getFirmante());
-            infofirma.setTextoFirma(alias);
-            infofirma.setApariencia(UtilesResources.getProperty(UtilesResources.PROP_APARIENCIA).equals(UtilesResources.TRUE_VALUE));
-            
-            System.out.println("Generando apariencia");
-            System.out.println("AliasHash: " + aliasHash );
-            System.out.println("CertIndex: " + certIndex );
-            System.out.println("Alias: " + alias);
-            System.out.println("Apariencia Properties: " + UtilesResources.getProperty(UtilesResources.PROP_APARIENCIA));
-            System.out.println("Apariencia: " + infofirma.isApariencia());
-            System.out.println("Hoja: "  + UtilesResources.getProperty(UtilesResources.PROP_PAG_FIRMA));
-            System.out.println("Ruta Imagen: " + UtilesResources.getProperty(UtilesResources.PROP_URL_IMAGEN) );
-            System.out.println("Largo: " + UtilesResources.getProperty(UtilesResources.PROP_LARGO_FIRMA));
-            System.out.println("Ancho: " + UtilesResources.getProperty(UtilesResources.PROP_ANCHO_FIRMA));            
-            
-            if (infofirma.isApariencia()){
-                System.out.println("Definiendo propiedades de apariencia");
-                
-                infofirma.setHoja( Integer.valueOf( UtilesResources.getProperty(UtilesResources.PROP_PAG_FIRMA)) );
-                infofirma.setAncho( Integer.valueOf(UtilesResources.getProperty(UtilesResources.PROP_ANCHO_FIRMA)) );
-                infofirma.setLargo( Integer.valueOf(UtilesResources.getProperty(UtilesResources.PROP_LARGO_FIRMA)) );
-                infofirma.setRutaImagen( UtilesResources.getProperty(UtilesResources.PROP_URL_IMAGEN) );
-            }
-            return infofirma;
-        } 
-        catch (KeyStoreException ex) {
-            Logger.getLogger(FirmaPDFController.class.getName()).log(Level.SEVERE, null, ex);
-            throw new AppletException(null, null, ex.getCause());
-        } 
-        catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(FirmaPDFController.class.getName()).log(Level.SEVERE, null, ex);
-            throw new AppletException(null, null, ex.getCause());
-        } 
-        catch (UnrecoverableKeyException ex) {
-            Logger.getLogger(FirmaPDFController.class.getName()).log(Level.SEVERE, null, ex);
-            throw new AppletException(null, null, ex.getCause());
-        }
-    } 
-    
-    
-    
-    public ByteArrayOutputStream firmar(PDFFirma infoFirma, InputStream pdfbase64 ) throws AppletException{
+    public ByteArrayOutputStream firmar(InputStream pdfbase64 ) throws AppletException{
         
         try {
             System.out.println("Firma Controller::firmar");
+            
+            SignerInfo signerInfo = ActualCertInfo.getInstance().getSingerInfo();
+            HandlerCert handlerCert = HandlerCert.getInstance();
+            Certificado certificado = handlerCert.getCertificadoPorAlias(signerInfo.getAlias());
+            PrivateKey privateKey = handlerCert.getPrivateKeyPorAlias( signerInfo.getAlias() );
             
             PdfReader reader = new PdfReader( pdfbase64 );
             ByteArrayOutputStream os = new ByteArrayOutputStream();
             PdfStamper stamper = PdfStamper.createSignature(reader, os, '\0', null, true);
             PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
-            System.out.println("Pre definir apariencia...");
-            if (infoFirma.isApariencia()){
-                System.out.println("Insertando apriencia en documento...");
-                appearance.setSignatureGraphic( Image.getInstance(new URL( infoFirma.getRutaImagen() )) );
-                appearance.setRenderingMode(Utiles.getModoApariencia());           
-                
-                int numeroPagFirma = infoFirma.getHoja() == -1 ? reader.getNumberOfPages() : infoFirma.getHoja();
-                int cantidadFirmaActuales = reader.getAcroFields().getSignatureNames().size();
-                int[] coords = infoFirma.calcularCorrdenadasFirma( cantidadFirmaActuales,  infoFirma.getAncho(), infoFirma.getLargo() );
-                
-                //llx, lly, urx, ury
-                String textofirma = "Firmado digitalmente por: " + infoFirma.getFirmante() + 
-                                    "\nFecha: " + Utiles.DATE_FORMAT_MIN.format(new Date());
-                
-                appearance.setLayer2Text( textofirma );
-                appearance.setReason("Prueba de Recepción");
-                appearance.setLocation("Montevideo - Uruguay");
-                
-                int tamanioLetra = Integer.valueOf( UtilesResources.getProperty("appletConfig.TamanioLetra") );
-                appearance.setLayer2Font(new Font(FontFamily.HELVETICA, tamanioLetra, Font.NORMAL, new BaseColor(0, 0, 0)));
-                appearance.setVisibleSignature(new Rectangle(coords[0], coords[1], coords[2], coords[3]), numeroPagFirma, "Id: " + IdGenerator.generate());
-            }
-            
-            ExternalSignature es = new PrivateKeySignature(infoFirma.getPk(), "SHA-256", infoFirma.getProvidername());
+            ExternalSignature es = new PrivateKeySignature( privateKey, "SHA-256", certificado.getProviderName());
             ExternalDigest digest = new BouncyCastleDigest();
-            MakeSignature.signDetached(appearance, digest, es, infoFirma.getChainCert(), null, null, null, 0, CryptoStandard.CMS);
-           
+            
+            if ( signerInfo.isApariencia() ){
+                System.out.println("Insertando apriencia en documento...");
+
+                appearance.setRenderingMode( PdfSignatureAppearance.RenderingMode.GRAPHIC );
+                appearance.setSignatureGraphic( Image.getInstance( Utiles.convertirBase64StringToArrayBytes( signerInfo.getImagen() ) ) );
+                int numeroPagFirma = signerInfo.getHoja() == -1 ? reader.getNumberOfPages() : signerInfo.getHoja();
+                Rectangle pageSize = reader.getPageSize(numeroPagFirma);
+
+                System.out.println("Hoja: " + signerInfo.getHoja());
+                System.out.println("Ancho documento: " + pageSize.getWidth() );
+                System.out.println("Alto documento: " + pageSize.getHeight() );
+
+                System.out.println("Bottom documento: " + pageSize.getBottom() );
+                System.out.println("Top documento: " + pageSize.getTop() );
+                System.out.println("Left documento: " + pageSize.getLeft());
+                System.out.println("Right documento: " + pageSize.getRight());
+
+                float llx = Utiles.convertirMmToPDFUnits( signerInfo.getLlx() );
+                float lly = Utiles.convertirMmToPDFUnits( signerInfo.getLly() );
+                float urx = Utiles.convertirMmToPDFUnits( signerInfo.getUrx() );
+                float ury = Utiles.convertirMmToPDFUnits( signerInfo.getUry() );
+
+
+                //float llx, float lly, float urx, float ury
+                Rectangle rectangle = new Rectangle(llx, lly, urx, ury);
+                appearance.setVisibleSignature(rectangle, numeroPagFirma, "Id: " + IdGenerator.generate());
+            }
+            appearance.setReason( signerInfo.getMotivo() );
+            appearance.setLocation( signerInfo.getLocalidad() ); 
+            MakeSignature.signDetached(appearance, digest, es, certificado.getChainCert(), null, null, null, 0, CryptoStandard.CMS);
             System.out.println("PDF Firmado correctamente.");
             
             return os;
@@ -179,20 +133,15 @@ public class FirmaPDFController {
             Logger.getLogger(FirmaPDFController.class.getName()).log(Level.SEVERE, null, ex);
             throw new AppletException(UtilesMsg.ERROR_FIRMANDO_DOCUMENTO, null, ex.getCause());
         }
-    }    
+    }  
     
     public void validarFirmaOK( boolean validar, byte[] pdffirmado ){
-        
-//        try{
+       
             if (validar){
                 PDFFirmaValidar validador = PDFFirmaValidar.getInstance();
                 validador.validarFirma( pdffirmado );
             }
             
-//        }
-//        catch ( AppletException e ){
-//            throw new AppletException(null, null, e);    
-//        }
     }
     
 }

@@ -6,27 +6,29 @@ package com.isa.token;
  * and open the template in the editor.
  */
 
-import com.isa.common.ActualCertInfo;
+import com.isa.common.HandlerCert;
 import com.isa.entities.Certificado;
-import com.isa.entities.Codigo;
-import com.isa.entities.WrapperCert;
+import com.isa.entities.ParamInfo;
 import com.isa.exception.AppletException;
 import com.isa.utiles.Utiles;
-import com.isa.utiles.UtilesMsg;
 import com.isa.utiles.UtilesResources;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.ProviderException;
 import java.security.Security;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.security.auth.login.LoginException;
@@ -45,6 +47,7 @@ public class Token {
     private boolean activo;
     private KeyStore keystore;
     private boolean logued;
+    private String pkcs11config;
     private ArrayList<X509Certificate> listaCerts;
     
     public Token(){
@@ -60,7 +63,7 @@ public class Token {
     }
     
     
-    public Token(String module, String library) throws AppletException  {
+    public Token(String module, String library)  {
         
         this.module = module;
         this.library = library;
@@ -68,32 +71,43 @@ public class Token {
         this.listaCerts = new ArrayList();
             
         try {    
-            String pkcs11config = Utiles.setKeyValue(UtilesResources.getProperty("appletConfig.paramName"), module);
-            pkcs11config += Utiles.setKeyValue(UtilesResources.getProperty("appletConfig.paramLibrary"), library);
-            pkcs11config += Utiles.setKeyValue(UtilesResources.getProperty("appletConfig.paramShowInfo"), showInfo.toString());
-            
-            System.out.println("Config pkcs11: " + pkcs11config);
-            
-            ByteArrayInputStream confStream = new ByteArrayInputStream(pkcs11config.getBytes());
-            Provider prov = new sun.security.pkcs11.SunPKCS11( confStream );
-            Security.addProvider( prov );
-            keystore = KeyStore.getInstance("PKCS11");
-            activo = true;
-            
+            cargarConfiguracionInit();
         }
         catch(ProviderException ex){
             Logger.getLogger(Token.class.getName()).log(Level.SEVERE, null, ex);
-            activo = false;            
-            throw new AppletException(UtilesMsg.ERROR_ACCEDIENDO_PROVEEDOR, null, ex.getCause());
-        }
-        catch(KeyStoreException ex){
+            activo = false;
+        }  
+        catch(Exception ex){
             Logger.getLogger(Token.class.getName()).log(Level.SEVERE, null, ex);
             activo = false;    
-            throw new AppletException(UtilesMsg.ERROR_ACCEDIENDO_TOKEN, null, ex.getCause());
-        }   
+        }  
+    } 
+    
+    private void cargarConfiguracionInit() throws  ProviderException {
+
+        System.out.println("Token::cargarConfiguracionInit");
+        
+        pkcs11config = Utiles.setKeyValue(ParamInfo.getInstance().getParam_name(), module);
+        pkcs11config += Utiles.setKeyValue(ParamInfo.getInstance().getParam_lib(), library);
+        pkcs11config += Utiles.setKeyValue(ParamInfo.getInstance().getParam_showinfo(), showInfo.toString());
+        
+        System.out.println("Config pkcs11: " + pkcs11config);            
+        ByteArrayInputStream confStream = new ByteArrayInputStream(pkcs11config.getBytes());
+        Provider prov = new sun.security.pkcs11.SunPKCS11( confStream );
+        activo = true;
     }   
     
+    public void reLoadConfig() throws ProviderException{
+        cargarConfiguracionInit();
+    }
     
+    private void instanciarKeyStore() throws KeyStoreException {
+        System.out.println("Token::instanciarKeyStore");
+        ByteArrayInputStream confStream = new ByteArrayInputStream(pkcs11config.getBytes());
+        Provider prov = new sun.security.pkcs11.SunPKCS11( confStream );
+        Security.addProvider( prov );
+        keystore = KeyStore.getInstance("PKCS11");
+    }    
     
     //Operaciones
     public String getModule() {
@@ -160,79 +174,51 @@ public class Token {
         this.listaCerts = listaCerts;
     }
     
-    public void obtenerCertificados() throws IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException {
+    public void cargarCertificados() throws AppletException{
         
-        if (isLogued()){
+        try {
+            List<Certificado> listaCertificado = new ArrayList<>();
+
             Enumeration aliases = keystore.aliases();
+
             while (aliases.hasMoreElements()) {
                 Object alias = aliases.nextElement();
+
                 X509Certificate cert0 = (X509Certificate) keystore.getCertificate(alias.toString());
-                System.out.println("Certificado: " + Utiles.getCN(cert0.getSubjectDN().getName()));
-                System.out.println("Emisor: " + Utiles.getCN(cert0.getIssuerDN().getName()) );
-                System.out.println("Fecha Validez : " + Utiles.DATE_FORMAT_MIN.format(cert0.getNotAfter()));
-                listaCerts.add( cert0 );
-            }
-        }
-    }
-    
-    public WrapperCert obtenerCertCI(){
-        WrapperCert wcert = new WrapperCert();
-        if (isLogued()){
-            try {
-                String nombre = "";
-                String emisor = "";
-                String fechaValidez = "";
-                String cedula = "";
                 
-                Enumeration aliases = keystore.aliases();
-
-                while (aliases.hasMoreElements()) {
-                    Object alias = aliases.nextElement();
-                    
-                    X509Certificate cert0 = (X509Certificate) keystore.getCertificate(alias.toString());
-                    
-                    //cedula = Utiles.getDNI(cert0.getSubjectDN().getName());
-                    nombre = Utiles.getCN(cert0.getSubjectDN().getName());
-                    emisor = Utiles.getCN(cert0.getIssuerDN().getName());
-                    fechaValidez = Utiles.DATE_FORMAT_MIN.format(cert0.getNotAfter());
-                    
-                    System.out.println("Cédula: " + cedula);
-                    System.out.println("Nombre: " + nombre);
-                    System.out.println("Emisor: " + emisor );
-                    System.out.println("Fecha Validez : " + fechaValidez );
-                    
-                    HashMap aliasHash = new HashMap();
-                    aliasHash.put(aliasHash.size(), alias);
-                    
-                    ActualCertInfo.getInstance().setAliasHash(aliasHash);
-                    ActualCertInfo.getInstance().setCertIndex(0);
-                    
+                Certificate[] chainCert = keystore.getCertificateChain(alias.toString());
+                String providerName = keystore.getProvider().getName();
+                
+                HashMap aliasHash = new HashMap();
+                aliasHash.put(aliasHash.size(), alias);
+                
+                Date fechaActual = new Date();
+                if ( fechaActual.after(cert0.getNotBefore()) && fechaActual.before(cert0.getNotAfter()) ) {
                     listaCerts.add( cert0 );
-
-                    Certificado certificado = new Certificado(cedula, nombre, emisor, fechaValidez);
                     
-                    wcert.setCertificado( certificado );
-                    wcert.setMsj( UtilesMsg.CERTIFICADO_OBTENIDO_OK );
-                    wcert.setCodigo( Codigo.OK );
-                    return wcert;
+                    Certificado certificado = new Certificado();
+                    certificado.setNroSerie(cert0.getSerialNumber().toString(16));
+                    certificado.setAlias(alias.toString());
+                    certificado.setNombre( Utiles.getCN(cert0.getSubjectDN().getName()) );
+                    certificado.setEmisor( Utiles.getCN(cert0.getIssuerDN().getName()) );
+                    certificado.setFechaDesde( Utiles.DATE_FORMAT_MIN.format(cert0.getNotBefore()));
+                    certificado.setFechaHasta( Utiles.DATE_FORMAT_MIN.format(cert0.getNotAfter()));
+                    certificado.setoSubject( Utiles.getO(cert0.getSubjectDN().getName()) );
+                    certificado.setoUSubject( Utiles.getOU(cert0.getSubjectDN().getName()) );
+                    certificado.setoEmisor( Utiles.getO(cert0.getIssuerDN().getName()) );
+                    certificado.setoUEmisor( Utiles.getOU(cert0.getIssuerDN().getName()) );
+                    certificado.setChainCert(chainCert);
+                    certificado.setProviderName(providerName);
+                    listaCertificado.add( certificado );
                 }
-                
-                wcert.setMsj(UtilesMsg.ERROR_CERT_VACIO);
-                wcert.setCodigo(Codigo.ERROR);
-                return wcert;
-            } 
-            catch (KeyStoreException ex) {
-
-                wcert.setMsj( UtilesMsg.ERROR_AUTH );
-                wcert.setCodigo( Codigo.ERROR );
-                Logger.getLogger(Token.class.getName()).log(Level.SEVERE, null, ex);
-                return wcert;
             }
-        }
-        else{
-            wcert.setMsj( UtilesMsg.ERROR_AUTH );
-            wcert.setCodigo( Codigo.ERROR );
-            return wcert;
+            HandlerCert.getInstance().addKeystore(keystore);
+            HandlerCert.getInstance().getCertificados().clear();
+            HandlerCert.getInstance().getCertificados().addAll(listaCertificado);
+        } 
+        catch (KeyStoreException ex) {
+               String msj = "Error accediendo al almacén de certificados.";
+               throw new AppletException(msj, null, ex.getCause());
         }
     }
     
@@ -240,18 +226,22 @@ public class Token {
         return logued;
     }
     
-    public void login( String password ) throws IOException, NoSuchAlgorithmException, CertificateException{
+    public void login( String password ) throws IOException, NoSuchAlgorithmException, CertificateException, KeyStoreException, LoginException{
+        if (isLogued()){
+            logout();
+        }
+        instanciarKeyStore();
         this.password = password;
         KeyStore.PasswordProtection pp = new KeyStore.PasswordProtection( password.toCharArray() );
         keystore.load(null , pp.getPassword() );
         logued = true;
+        System.out.println("Token::login ok");
     }
     
     public void logout() throws LoginException{
-        ((SunPKCS11) keystore.getProvider() ).logout();
-        keystore.getProvider().clear();     
+        ((SunPKCS11) keystore.getProvider() ).logout();    
         password = null;        
         logued = false; 
-        System.out.println("Token::logout");
+        System.out.println("Token::logout ok");
     }
 }

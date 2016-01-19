@@ -23,8 +23,8 @@ public class KeyStoreValidator {
         
 	private static String KEYSTORE;
         
-        public static void setInitStoreValidator() throws AppletException{
-            KEYSTORE = UtilesResources.getProperty(UtilesResources.PROP_KEYSTORE);
+        public static void setInitStoreValidator( String keystore) {
+            KEYSTORE = keystore;
             System.out.println("KEYSTORE: "  + KEYSTORE);
         }
         

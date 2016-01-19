@@ -2,4 +2,6 @@
 <catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog" prefer="system">
     <system systemId="file:/C:/Users/JMiraballes/Documents/Proyectos/MieFirma/wsdl/version1/docman.wsdl" uri="wsdl/docman.wsdl"/>
     <system systemId="file:/C:/Users/JMiraballes/Documents/Proyectos/MieFirma/wsdl/version1/docman.xsd" uri="wsdl/docman.xsd"/>
+    <system systemId="file:/C:/Program%20Files/Apache%20Software%20Foundation/apache-tomcat-8.0.28/webapps/MieFIRMA-libre-0.9.0/WEB-INF/classes/uy/isa/miefirma/webapp/soap/docman.wsdl" uri="wsdl/docman.wsdl"/>
+    <system systemId="file:/C:/Program%20Files/Apache%20Software%20Foundation/apache-tomcat-8.0.28/webapps/MieFIRMA-libre-0.9.0/WEB-INF/classes/uy/isa/miefirma/webapp/soap/docman.xsd" uri="wsdl/docman.xsd"/>
 </catalog>

@@ -6,22 +6,13 @@
 package com.isa.utiles;
 
 import com.isa.exception.AppletException;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.xml.ws.BindingProvider;
-import py.com.miefirma.docman.definitions.Docman;
-import py.com.miefirma.docman.definitions.DocmanService;
-import py.com.miefirma.docman.schemas.DocumentType;
-import py.com.miefirma.docman.schemas.GetDocumentRequest;
-import py.com.miefirma.docman.schemas.GetDocumentRequestType;
-import py.com.miefirma.docman.schemas.GetDocumentResponse;
-import py.com.miefirma.docman.schemas.GetDocumentResponseType;
-import py.com.miefirma.docman.schemas.UploadDocumentRequest;
-import py.com.miefirma.docman.schemas.UploadDocumentRequestType;
-import py.com.miefirma.docman.schemas.UploadDocumentResponse;
+import uy.isa.docman.client.DocmanClient;
+import uy.isa.docman.schemas.DocumentType;
+import uy.isa.docman.schemas.GetDocumentRequest;
+import uy.isa.docman.schemas.GetDocumentResponse;
+import uy.isa.docman.schemas.ObjectFactory;
+import uy.isa.docman.schemas.UploadDocumentRequest;
+import uy.isa.docman.schemas.UploadDocumentResponse;
 
 /**
  *
@@ -29,49 +20,39 @@ import py.com.miefirma.docman.schemas.UploadDocumentResponse;
  */
 public class UtilesWS {
     
-    private static Docman port = null;
+    private static DocmanClient docmanClient = null;
+    
+    private static UtilesWS instance;
 
     public static int CODIGO_RESPUESTA_ERROR = -1; 
     public static int CODIGO_RESPUESTA_OK = 1;
     
-    public static Docman getInstancePortWS() throws AppletException{
-        if (port == null){
-            URL wsdllocation = null;
-            try {
-                wsdllocation = new URL(UtilesResources.getProperty(UtilesResources.PROP_WS_ENDPOINT));
-                DocmanService serviceRes = new DocmanService( wsdllocation );
-                port = serviceRes.getDocmanPort();
-            } 
-            catch (MalformedURLException ex) {
-                Logger.getLogger(UtilesWS.class.getName()).log(Level.SEVERE, null, ex);
-                throw new AppletException(UtilesMsg.ERROR_URL + UtilesResources.getProperty(UtilesResources.PROP_WS_ENDPOINT), null, ex.getCause());
-            }
+    public UtilesWS() throws AppletException {
+        
+        String endpoint = UtilesResources.getProperty(UtilesResources.PROP_WS_ENDPOINT);
+        docmanClient = new DocmanClient();
+        docmanClient.setDefaultUri( endpoint );
+        docmanClient.setMarshallerAndBound();
+    }
+    
+    public static UtilesWS getInstanceWS() throws AppletException{
+        if (instance == null){
+            instance = new UtilesWS();
         }
-        return port;
+        return instance;
     }
     
     
-    public static DocumentType getDocumento( String documento ) throws AppletException{
-        GetDocumentRequest docrequest = new GetDocumentRequest();
-        GetDocumentRequestType docrequesttype = new GetDocumentRequestType();
-        docrequesttype.setId(documento);
+    public  GetDocumentResponse getDocumento( String documento ){
         
-        docrequest.setGetDocumentReq(docrequesttype);
-        GetDocumentResponse docresponse = getInstancePortWS().getDocument( docrequest );
-        
-        return docresponse.getGetDocumentRes().getGetDocumentRes();
+        GetDocumentRequest getDocRequest = docmanClient.CreateGetDocumentRequest( documento );
+        return (GetDocumentResponse) docmanClient.GetDocument(getDocRequest);
     }
     
-    public static String subirDocumento( DocumentType documentType ) throws AppletException{
-        
-        UploadDocumentRequest uprequest = new UploadDocumentRequest();
-        UploadDocumentRequestType uprequesttype = new UploadDocumentRequestType();
-        uprequesttype.setUploadDocumentReq(documentType);
-        
-        uprequest.setUploadDocumentReq(uprequesttype);
-        UploadDocumentResponse upresponse = getInstancePortWS().uploadDocument(uprequest);
-        
-        return upresponse.getUploadDocumentRes().getId();
+    public  UploadDocumentResponse uploadDocumento( DocumentType document ) throws AppletException{
+        UploadDocumentRequest uploadDocRequest = new UploadDocumentRequest();
+        uploadDocRequest.setDocument(document);
+        return (UploadDocumentResponse) docmanClient.UploadDocument( uploadDocRequest );
     }
     
 }
