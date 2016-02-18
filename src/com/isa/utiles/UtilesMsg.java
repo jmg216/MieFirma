@@ -11,6 +11,7 @@ package com.isa.utiles;
  */
 public class UtilesMsg {
     
+    public static String ERROR_CONEXION_TOKEN = "No ha podido establecer la comunicación con el dispositivo. Debe reconectar el token o tarjeta.";
     public static String ERROR_CARGANDO_CERTIFICADOS = "Ha ocurrido un error al cargar los certificados";
     public static String ERROR_URL = "No se puede resolver la siguiente url: ";
     public static String DOC_FIRMADO_OK = "Se ha firmado correctamente el documento.";

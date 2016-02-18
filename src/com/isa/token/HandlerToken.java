@@ -9,6 +9,7 @@ import com.isa.entities.ParamInfo;
 import com.isa.exception.AppletException;
 import com.isa.plataform.OSValidator;
 import com.isa.utiles.Utiles;
+import com.isa.utiles.UtilesMsg;
 import java.security.KeyStoreException;
 import java.security.ProviderException;
 import java.util.ArrayList;

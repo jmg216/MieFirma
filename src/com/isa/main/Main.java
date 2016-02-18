@@ -125,18 +125,7 @@ public class Main extends javax.swing.JApplet implements ICommon {
     private void sincronizarTokens(){
         
         System.out.println("Main::setSmartCardListener");
-            
-            Thread thcheckconnected = new Thread(){
-                @Override
-                public void run(){  
-                    boolean tokenConnected = false;
-                    
-                    while ( !tokenConnected ){
-                        tokenConnected = checkTokenConectado(  );
-                    }
-                }
-            };
-            thcheckconnected.start();
+        checkTokenConectado();
     }
     
     public boolean checkTokenConectado( ){
@@ -453,15 +442,23 @@ public class Main extends javax.swing.JApplet implements ICommon {
     
     public void firmar(String jsonData, String successCallback, String errorCallback){
         System.out.println("Main::firmar");
+        boolean isTokenActivo = HandlerToken.getInstance().isTokenActivo();
+                
+        if( !isTokenActivo ){
+            firmaError( errorCallback, UtilesMsg.ERROR_CONEXION_TOKEN);
+            return;
+        }
         
         Gson gson = GsonHelper.getInstance().getGson();
         SignerInfo signerInfo = gson.fromJson(jsonData, SignerInfo.class);
         ActualCertInfo.getInstance().inicializar();
         ActualCertInfo.getInstance().setSingerInfo(signerInfo);
+        
         Thread thread = new Thread(){
             @Override
             public void run(){
                 try{
+                    
                     String documento = ActualCertInfo.getInstance().getSingerInfo().getDoc();
                     System.out.println("Previo a conectar con el servcio de documento");
                     GetDocumentResponse docToSign = UtilesWS.getInstanceWS().getDocumento( documento );
