@@ -27,7 +27,7 @@ public class HandlerCert {
     private static HandlerCert handlerCert;
     
     private HandlerCert(){
-        this.certs = new ArrayList<>();
+        this.certs = new ArrayList();
     }
     
     public static HandlerCert getInstance(){

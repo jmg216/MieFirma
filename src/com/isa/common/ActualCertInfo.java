@@ -14,7 +14,8 @@ import com.isa.entities.SignerInfo;
 public class ActualCertInfo {
    
     private SignerInfo singerInfo;
-
+    private String successCallback;
+    private String errorCallback;
     
     
     public SignerInfo getSingerInfo() {
@@ -40,6 +41,22 @@ public class ActualCertInfo {
     
     public final void inicializar(){  
         singerInfo = null;
+    }
+
+    public String getSuccessCallback() {
+        return successCallback;
+    }
+
+    public void setSuccessCallback(String successCallback) {
+        this.successCallback = successCallback;
+    }
+
+    public String getErrorCallback() {
+        return errorCallback;
+    }
+
+    public void setErrorCallback(String errorCallback) {
+        this.errorCallback = errorCallback;
     }
   
     

@@ -177,7 +177,7 @@ public class Token {
     public void cargarCertificados() throws AppletException{
         
         try {
-            List<Certificado> listaCertificado = new ArrayList<>();
+            List<Certificado> listaCertificado = new ArrayList();
 
             Enumeration aliases = keystore.aliases();
 

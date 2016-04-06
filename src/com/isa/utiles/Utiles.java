@@ -186,16 +186,16 @@ public class Utiles {
     }    
     
     public static String getDocIDSerialNumber( String dn ){
-            
-        String ciUserCert = Utiles.getCI( dn );
+        
         String cieUserCert = Utiles.getCIE( dn );
+        String ciUserCert = Utiles.getCI( dn );
         String pspUserCert = Utiles.getPSP( dn );
         
-        if (!Utiles.isNullOrEmpty(ciUserCert)){
-            return ciUserCert;
-        }
-        else if (!Utiles.isNullOrEmpty(cieUserCert)){
+        if (!Utiles.isNullOrEmpty(cieUserCert)){
             return cieUserCert;
+        }        
+        else if (!Utiles.isNullOrEmpty(ciUserCert)){
+            return ciUserCert;
         }
         else if (!Utiles.isNullOrEmpty(pspUserCert)){
             return pspUserCert;

@@ -70,6 +70,8 @@ public class Main extends javax.swing.JApplet implements ICommon {
     /**
      * Initializes the applet Main
      */
+    private String successCallback;
+    private String errorCallback; 
     @Override
     public void init() {
        
@@ -442,9 +444,11 @@ public class Main extends javax.swing.JApplet implements ICommon {
     
     public void firmar(String jsonData, String successCallback, String errorCallback){
         System.out.println("Main::firmar");
+        ActualCertInfo.getInstance().setErrorCallback(errorCallback);
+        ActualCertInfo.getInstance().setSuccessCallback(successCallback);
+        
         boolean isTokenActivo = HandlerToken.getInstance().isTokenActivo();
-                
-        if( !isTokenActivo ){
+        if(KeyStoreValidator.isKeystoreToken() && !isTokenActivo ){
             firmaError( errorCallback, UtilesMsg.ERROR_CONEXION_TOKEN);
             return;
         }
@@ -472,14 +476,13 @@ public class Main extends javax.swing.JApplet implements ICommon {
                     }
                     //Documento firmado;
                     docToSign.getDocument().setDocument( pdfOS.toByteArray() );
-                    UploadDocumentResponse uploadeddocument = UtilesWS.getInstanceWS().uploadDocumento( docToSign.getDocument() ); 
-                    
+                    UploadDocumentResponse uploadeddocument = UtilesWS.getInstanceWS().uploadDocumento( docToSign.getDocument() );
                     System.out.println("Documento guardado: " + uploadeddocument.getId());
-                    firmaExitosa( successCallback, uploadeddocument.getId(), UtilesMsg.DOC_FIRMADO_OK);
+                    firmaExitosa( ActualCertInfo.getInstance().getSuccessCallback(), uploadeddocument.getId(), UtilesMsg.DOC_FIRMADO_OK);
                 }
                 catch (AppletException ex) {
                     Logger.getLogger(FirmaPDFController.class.getName()).log(Level.SEVERE, null, ex);
-                    firmaError( errorCallback, ex.getMsj() );
+                    firmaError( ActualCertInfo.getInstance().getErrorCallback(), ex.getMsj() );
                 } catch (LoginException ex) {
                     Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
                 }
