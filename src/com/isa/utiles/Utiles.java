@@ -6,7 +6,11 @@ package com.isa.utiles;
  * and open the template in the editor.
  */
 
+import com.isa.common.HandlerCert;
+import com.isa.entities.Certificado;
 import com.isa.exception.AppletException;
+import com.isa.token.HandlerToken;
+import com.isa.token.Token;
 import com.itextpdf.text.pdf.PdfSignatureAppearance;
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
@@ -25,6 +29,8 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.transform.OutputKeys;
@@ -479,5 +485,21 @@ public class Utiles {
     public static double convertirCmToPulgadas( double cm ){
         return cm * 0.39370;
     }
+
+    public static float convertirPorcentajeUnits ( int value, float max ){
+        
+        float v = (value * max) / 100;
+        return v;               
+    }
     
+    
+    //obtenerCertificados
+    public static ArrayList<Certificado> obtenerCertificados() throws AppletException{            
+        if (HandlerToken.getInstance().isTokenActivo()){
+                HandlerToken handlerToken = HandlerToken.getInstance();         
+                Token token = handlerToken.getTokenActivo();
+                token.cargarCertificados();
+        }
+        return HandlerCert.getInstance().getCertificados();
+    }
 }

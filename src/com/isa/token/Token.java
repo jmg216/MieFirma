@@ -209,6 +209,7 @@ public class Token {
                     certificado.setoUEmisor( Utiles.getOU(cert0.getIssuerDN().getName()) );
                     certificado.setChainCert(chainCert);
                     certificado.setProviderName(providerName);
+                    
                     listaCertificado.add( certificado );
                 }
             }

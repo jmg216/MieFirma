@@ -17,8 +17,8 @@ import com.isa.entities.ParamInfo;
 import com.isa.entities.SignerInfo;
 import com.isa.entities.WrapperCert;
 import com.isa.exception.AppletException;
-import com.isa.firma.FirmaPDFController;
-import com.isa.firma.PDFFirma;
+import com.isa.firma.pades.FirmaPDFController;
+import com.isa.firma.xades.FirmaXMLController;
 import com.isa.plataform.KeyStoreValidator;
 import com.isa.security.ISCertSecurityManager;
 import com.isa.token.HandlerToken;
@@ -29,15 +29,10 @@ import com.isa.utiles.UtilesResources;
 import com.isa.utiles.UtilesWS;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.KeyStoreSpi;
@@ -52,7 +47,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.security.auth.login.LoginException;
@@ -193,7 +187,7 @@ public class Main extends javax.swing.JApplet implements ICommon {
                 Token token = handlerToken.getTokenActivo();
                 token.cargarCertificados();
             }
-            certs = HandlerCert.getInstance().getCertificados();
+            certs = Utiles.obtenerCertificados();
             
             gsonHelper = GsonHelper.getInstance().getGson();
             return gsonHelper.toJson(certs);
@@ -441,6 +435,12 @@ public class Main extends javax.swing.JApplet implements ICommon {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
 
+    public static void testGson(String jsonData, String successCallback, String errorCallback){ 
+        Gson gson = GsonHelper.getInstance().getGson();
+        SignerInfo signerInfo = gson.fromJson(jsonData, SignerInfo.class);
+        System.out.println("Singer Info generado: " + signerInfo.getAlias());
+        
+    }
     
     public void firmar(String jsonData, String successCallback, String errorCallback){
         System.out.println("Main::firmar");
@@ -452,9 +452,12 @@ public class Main extends javax.swing.JApplet implements ICommon {
             firmaError( errorCallback, UtilesMsg.ERROR_CONEXION_TOKEN);
             return;
         }
-        
+        System.out.println("Verificó conexión");
         Gson gson = GsonHelper.getInstance().getGson();
         SignerInfo signerInfo = gson.fromJson(jsonData, SignerInfo.class);
+        
+        System.out.println("Singer Info generado.");
+        
         ActualCertInfo.getInstance().inicializar();
         ActualCertInfo.getInstance().setSingerInfo(signerInfo);
         
@@ -462,23 +465,37 @@ public class Main extends javax.swing.JApplet implements ICommon {
             @Override
             public void run(){
                 try{
-                    
-                    String documento = ActualCertInfo.getInstance().getSingerInfo().getDoc();
-                    System.out.println("Previo a conectar con el servcio de documento");
-                    GetDocumentResponse docToSign = UtilesWS.getInstanceWS().getDocumento( documento );
-                    System.out.println("Documento obtenido: " + docToSign.getDocument() != null ? docToSign.getDocument().getName() :  "NULL");
-                    
-                    InputStream is = new ByteArrayInputStream( docToSign.getDocument().getDocument() );
-                    FirmaPDFController firmapdfcontroller = FirmaPDFController.getInstance();
-                    ByteArrayOutputStream pdfOS = firmapdfcontroller.firmar( is );
-                    if (KeyStoreValidator.isKeystoreToken()){
-                        HandlerToken.getInstance().getTokenActivo().logout();
+                    String response = "";
+                    //firma xml.
+                    if (ActualCertInfo.getInstance().getSingerInfo().isFirmaXML() ){
+                        System.out.println("Firma xml");
+                        String xmldoc = ActualCertInfo.getInstance().getSingerInfo().getDoc();
+                        FirmaXMLController firmaXML = FirmaXMLController.getInstance();
+                        response = firmaXML.firmarXades(xmldoc);
+                        System.out.println("Documento xml: " + response); 
                     }
-                    //Documento firmado;
-                    docToSign.getDocument().setDocument( pdfOS.toByteArray() );
-                    UploadDocumentResponse uploadeddocument = UtilesWS.getInstanceWS().uploadDocumento( docToSign.getDocument() );
-                    System.out.println("Documento guardado: " + uploadeddocument.getId());
-                    firmaExitosa( ActualCertInfo.getInstance().getSuccessCallback(), uploadeddocument.getId(), UtilesMsg.DOC_FIRMADO_OK);
+                    // firma pdf.
+                    if (ActualCertInfo.getInstance().getSingerInfo().isFirmaPDF()){
+                        System.out.println("Firma pdf");
+                        String documento = ActualCertInfo.getInstance().getSingerInfo().getDoc();
+                        System.out.println("Previo a conectar con el servcio de documento");
+                        GetDocumentResponse docToSign = UtilesWS.getInstanceWS().getDocumento( documento );
+                        System.out.println("Documento obtenido: " + docToSign.getDocument() != null ? docToSign.getDocument().getName() :  "NULL");
+
+                        InputStream is = new ByteArrayInputStream( docToSign.getDocument().getDocument() );
+                        FirmaPDFController firmapdfcontroller = FirmaPDFController.getInstance();
+                        ByteArrayOutputStream pdfOS = firmapdfcontroller.firmar( is );
+                        if (KeyStoreValidator.isKeystoreToken()){
+                            HandlerToken.getInstance().getTokenActivo().logout();
+                        }
+                        //Documento firmado;
+                        docToSign.getDocument().setDocument( pdfOS.toByteArray() );
+                        UploadDocumentResponse uploadeddocument = UtilesWS.getInstanceWS().uploadDocumento( docToSign.getDocument() );
+                        response = uploadeddocument.getId();
+                        System.out.println("Documento guardado: " + response);                        
+                    }                    
+                    
+                    firmaExitosa( ActualCertInfo.getInstance().getSuccessCallback(), response, UtilesMsg.DOC_FIRMADO_OK);
                 }
                 catch (AppletException ex) {
                     Logger.getLogger(FirmaPDFController.class.getName()).log(Level.SEVERE, null, ex);

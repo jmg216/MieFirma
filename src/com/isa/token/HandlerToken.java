@@ -114,8 +114,6 @@ public class HandlerToken {
     public boolean isTokenActivo(){
         try {
             boolean isActivo = false;
-            System.out.println("HandlerToken::isTokenActivo");
-
             Iterator<Token> it = getTokens().iterator();
 
             while (it.hasNext()){
@@ -126,6 +124,7 @@ public class HandlerToken {
                     break;
                 }
             }
+            System.out.println("HandlerToken::isTokenActivo: " + isActivo);
             return isActivo;
         } 
         catch (ProviderException ex) {
