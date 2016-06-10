@@ -100,6 +100,8 @@ public class Main extends javax.swing.JApplet implements ICommon {
             ActualCertInfo.getInstance().inicializar();
             setFrontPanelSize();
             sincronizarKeystores();
+            callEndApplet();
+            
     }
     
     private void cargarParametros(){
@@ -529,6 +531,13 @@ public class Main extends javax.swing.JApplet implements ICommon {
         System.out.println("Main::init::tokenConectado");
         JSObject win = (JSObject) JSObject.getWindow(this);
         win.call("callbackTokenConectado", new String[]{  "El token o tarjeta se encuentra conectado." } ); 
+    }
+    
+    
+    public void callEndApplet(){
+         System.out.println("Main::init::callEndApplet");
+        JSObject win = (JSObject) JSObject.getWindow(this);
+        win.call("callEndApplet", new String[]{  "Applet cargado" } );        
     }
     
     public void errorApplet( String msj ){
